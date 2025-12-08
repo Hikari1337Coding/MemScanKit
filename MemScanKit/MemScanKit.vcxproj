@@ -145,6 +145,7 @@
     <ClCompile Include="gui\imgui_init.cpp" />
     <ClCompile Include="gui\ui_main.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="gui\imgui\backend\imgui_impl_dx11.h" />
@@ -157,6 +158,7 @@
     <ClInclude Include="gui\imgui\imstb_truetype.h" />
     <ClInclude Include="gui\imgui_init.h" />
     <ClInclude Include="gui\ui_main.h" />
+    <ClInclude Include="src\utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

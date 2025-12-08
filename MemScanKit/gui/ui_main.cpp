@@ -2,6 +2,12 @@
 #include "imgui_init.h"
 #include "imgui/backend/imgui_impl_dx11.h"
 #include "imgui/backend/imgui_impl_win32.h"
+#include <string>
+#include "../src/utils.h"
+
+static DWORD targetPid = 0;
+static HANDLE targetHandle = nullptr;
+static ModuleInfo targetModuleInfo{ 0,0 };
 
 void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 	InitImGui(hwnd);
@@ -26,6 +32,34 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 		ImGui::NewFrame();
 
 		ImGui::Begin("MemScanKit", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+		static char procText[128] = "TargetProgram.exe";
+		ImGui::InputText("Process name", procText, IM_ARRAYSIZE(procText));
+		ImGui::SameLine();
+		if (ImGui::Button("Find")) {
+
+			DWORD pid = getProcIdByName(procText);
+			HANDLE handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+			ModuleInfo modInfo = getModuleInfoById(pid);
+
+			if (pid && handle && modInfo.base && modInfo.size) {
+				targetPid = pid;
+				targetHandle = handle;
+				targetModuleInfo = modInfo;
+			}
+				
+		}
+
+		if (ImGui::BeginTabBar("##main_tabs")) {
+			if (ImGui::BeginTabItem("Target's Info")) {
+				ImGui::Text("PID: %u", targetPid);
+				ImGui::Text("ModuleBaseAddress: 0x%llx", targetModuleInfo.base);
+				ImGui::Text("ModuleSize: 0x%llx", targetModuleInfo.size);
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
 
 		ImGui::End();
 		// End UI
