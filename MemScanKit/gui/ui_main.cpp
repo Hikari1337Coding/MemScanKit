@@ -5,10 +5,6 @@
 #include <string>
 #include "../src/utils.h"
 
-static DWORD targetPid = 0;
-static HANDLE targetHandle = nullptr;
-static ModuleInfo targetModuleInfo{ 0,0 };
-
 void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 	InitImGui(hwnd);
 
@@ -43,18 +39,96 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 			ModuleInfo modInfo = getModuleInfoById(pid);
 
 			if (pid && handle && modInfo.base && modInfo.size) {
-				targetPid = pid;
-				targetHandle = handle;
-				targetModuleInfo = modInfo;
+				target_pid = pid;
+				target_handle = handle;
+				target_module_info = modInfo;
 			}
-				
+
 		}
 
 		if (ImGui::BeginTabBar("##main_tabs")) {
 			if (ImGui::BeginTabItem("Target's Info")) {
-				ImGui::Text("PID: %u", targetPid);
-				ImGui::Text("ModuleBaseAddress: 0x%llx", targetModuleInfo.base);
-				ImGui::Text("ModuleSize: 0x%llx", targetModuleInfo.size);
+				ImGui::Text("PID: %u", target_pid);
+				ImGui::Text("ModuleBaseAddress: 0x%llx", target_module_info.base);
+				ImGui::Text("ModuleSize: 0x%llx", target_module_info.size);
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Scan Value")) {
+				static int valueType = 0;
+				ImGui::Combo("Type", &valueType, "Int32\0Float\0\0");
+
+				static char valueInput[64] = "1337";
+				ImGui::InputText("Value", valueInput, IM_ARRAYSIZE(valueInput));
+
+				if (!value_scanning) {
+					if (ImGui::Button("Scan")) {
+						// parse value
+						std::string valStr = valueInput;
+						DWORD pid = target_pid;
+						std::string proc = procText;
+						if (!pid) { OutputDebugStringA("Failed to find process\n"); }
+						else {
+							if (valueType == 0) {
+								int32_t needle = atoi(valStr.c_str());
+								if (valueScanThread.joinable()) valueScanThread.join();
+
+								valueScanThread = std::thread([pid, needle]() {
+
+									valueScan<int32_t>(pid, needle, [](int32_t a, int32_t b) {
+										return a == b; 
+										});
+									});
+							}
+							else {
+								float needle = (float)atof(valStr.c_str());
+								if (valueScanThread.joinable()) valueScanThread.join();
+								valueScanThread = std::thread([pid, needle]() {
+
+									valueScan<float>(pid, needle, [](float a, float b) {return a == b; });
+
+									});
+							}
+						}
+					}
+				}
+				else {
+					if (ImGui::Button("Stop")) { 
+						value_scanning = false; 
+						if (valueScanThread.joinable()) 
+							valueScanThread.join(); 
+					}
+				}
+
+				ImGui::Separator();
+				ImGui::Text("Value Matches (count: %d)", (int)value_matches.size());
+				if (ImGui::BeginChild("ValueMatchesChild", ImVec2(400, 200), true)) {
+					std::lock_guard<std::mutex> lock(value_matches_mutex);
+					for (size_t i = 0; i < value_matches.size(); ++i) {
+						uintptr_t a = value_matches[i];
+						std::string addrStr = addrToHex(a);
+
+						if (valueType == 0) {
+							int32_t v;
+							if (readFromTarget<int32_t>(a, v))
+								addrStr += "  =  " + std::to_string(v);
+							else
+								addrStr += "  =  <invalid>";
+						}
+						else {
+							float v;
+							if (readFromTarget<float>(a, v))
+								addrStr += "  =  " + std::to_string(v);
+							else
+								addrStr += "  =  <invalid>";
+						}
+
+						if (ImGui::Selectable(addrStr.c_str()))
+							ImGui::SetClipboardText(addrStr.c_str());
+					}
+					
+				}
+				ImGui::EndChild();
 				ImGui::EndTabItem();
 			}
 
@@ -82,4 +156,6 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 	ImGui::DestroyContext();
 	cleanupDeviceD3D();
 	UnregisterClassW(wc.lpszClassName, wc.hInstance);
+
+	CloseHandle(target_handle);
 }

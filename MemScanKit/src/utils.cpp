@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <TlHelp32.h>
+#include <sstream>
 
 DWORD getProcIdByName(const std::string& name) {
     PROCESSENTRY32 pe;
@@ -39,4 +40,11 @@ ModuleInfo getModuleInfoById(DWORD pid) {
 
     CloseHandle(snap);
     return m;
+}
+
+// Helper to format an address
+std::string addrToHex(uintptr_t a) {
+    std::ostringstream ss;
+    ss << "0x" << std::hex << std::uppercase << a;
+    return ss.str();
 }

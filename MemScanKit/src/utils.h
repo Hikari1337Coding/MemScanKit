@@ -1,12 +1,91 @@
 #pragma once
 #include <wtypes.h>
 #include <string>
+#include <atomic>
+#include <mutex>
+#include <vector>
 
 struct ModuleInfo {
 	uintptr_t base;
 	SIZE_T size;
 };
 
+inline DWORD target_pid = 0;
+inline HANDLE target_handle = nullptr;
+inline ModuleInfo target_module_info { 0,0 };
+
+inline std::vector<uintptr_t> value_matches;
+inline std::mutex value_matches_mutex;
+
+inline std::atomic_bool value_scanning{ false };
+
+inline std::thread valueScanThread;
+inline std::mutex target_mutex;
+
 DWORD getProcIdByName(const std::string& name);
 
 ModuleInfo getModuleInfoById(DWORD pid);
+
+template<typename T, typename Cmp>
+void valueScan(DWORD pid, const T& needle, Cmp cmp) {
+	value_scanning = true;
+	{
+		std::lock_guard<std::mutex> lock(value_matches_mutex);
+		value_matches.clear();
+	}
+	if (!target_handle) {
+		value_scanning = false;
+		return;
+	}
+
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+
+	LPCVOID addr = si.lpMinimumApplicationAddress;
+	const SIZE_T chunk = 1 << 20; // 1 MiB
+
+	while ((SIZE_T)addr < (SIZE_T)si.lpMaximumApplicationAddress && value_scanning) {
+		MEMORY_BASIC_INFORMATION mbi;
+		if (!VirtualQueryEx(target_handle, addr, &mbi, sizeof(mbi))) break;
+
+		if (mbi.State == MEM_COMMIT && (mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ))) {
+			SIZE_T regionSize = mbi.RegionSize;
+			SIZE_T offset = 0;
+			while (offset < regionSize && value_scanning) {
+				SIZE_T toRead = (SIZE_T)min(chunk, regionSize - offset);
+				std::vector<char> buffer(toRead);
+				SIZE_T bytesRead = 0;
+				LPCVOID readAddr = (LPCVOID)((SIZE_T)mbi.BaseAddress + offset);
+				if (ReadProcessMemory(target_handle, readAddr, buffer.data(), toRead, &bytesRead) > 0) {
+					// scan buffer for matches of sizeof(T) aligned at each byte
+					for (SIZE_T i = 0; i + sizeof(SIZE_T) <= bytesRead && value_scanning; ++i) {
+						T val;
+						memcpy(&val, &buffer[i], sizeof(T));
+						if (cmp(val, needle)) {
+							uintptr_t found = (uintptr_t)mbi.BaseAddress + offset + i;
+							std::lock_guard<std::mutex> lock(value_matches_mutex);
+							value_matches.push_back(found);
+						}
+					}
+				}
+				offset += toRead;
+			}
+		}
+		addr = (LPCVOID)((SIZE_T)mbi.BaseAddress + mbi.RegionSize);
+	}
+
+	value_scanning = false;
+
+}
+
+// Helper to format an address
+std::string addrToHex(uintptr_t a);
+
+
+template<typename T>
+bool readFromTarget(uintptr_t addr, T& out) {
+	std::lock_guard<std::mutex> lock(target_mutex);
+	if (!target_handle) return false;
+	SIZE_T numSizeRead = 0;
+	return ReadProcessMemory(target_handle, (LPCVOID)addr, &out, sizeof(T), &numSizeRead) && numSizeRead == sizeof(T);
+}
