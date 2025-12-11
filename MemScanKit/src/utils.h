@@ -78,6 +78,32 @@ void valueScan(DWORD pid, const T& needle, Cmp cmp) {
 
 }
 
+template<typename T>
+bool readValueFromProcess(LPCVOID addr, T& out) {
+	SIZE_T numOfBtyesRead = 0;
+	return ReadProcessMemory(target_handle, addr, &out, sizeof(T), &numOfBtyesRead) && numOfBtyesRead == sizeof(T);
+}
+
+// Narrowing scan (checks existing addresses only)
+template<typename T, typename Cmp>
+void valueNarrow(DWORD pid, const T& needle, Cmp cmp) {
+	value_scanning = true;
+	if (!target_handle) { value_scanning = false; return; }
+
+	std::vector<uintptr_t> keep;
+	{
+		std::lock_guard<std::mutex> lock(value_matches_mutex);
+		for (auto a : value_matches) {
+			T tmp;
+			if (readValueFromProcess((LPCVOID)a, tmp) && cmp(tmp, needle)) keep.push_back(a);
+		}
+		value_matches.swap(keep);
+	}
+
+	value_scanning = false;
+}
+
+
 // Helper to format an address
 std::string addrToHex(uintptr_t a);
 

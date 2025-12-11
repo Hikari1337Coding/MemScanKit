@@ -100,6 +100,29 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 					}
 				}
 
+				ImGui::SameLine();
+				if (ImGui::Button("Narrow")) {
+					// Narrow current results
+					std::string valStr = valueInput;
+					DWORD pid = target_pid;
+					std::string proc = procText;
+
+					if (valueType == 0) {
+						int32_t needle = atoi(valStr.c_str());
+						if (valueScanThread.joinable()) valueScanThread.join();
+						valueScanThread = std::thread([pid, needle]() {
+							valueNarrow<int32_t>(pid, needle, [](int32_t a, int32_t b) {return a == b; });
+							});
+					}
+					else {
+						float needle = (float)atof(valStr.c_str());
+						if (valueScanThread.joinable()) valueScanThread.join();
+						valueScanThread = std::thread([pid, needle]() {
+							valueNarrow<float>(pid, needle, [](float a, float b) {return a == b; });
+							});
+					}
+				}
+
 				ImGui::Separator();
 				ImGui::Text("Value Matches (count: %d)", (int)value_matches.size());
 				if (ImGui::BeginChild("ValueMatchesChild", ImVec2(400, 200), true)) {
