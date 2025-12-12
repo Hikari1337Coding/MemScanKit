@@ -56,37 +56,44 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 
 			if (ImGui::BeginTabItem("Scan Value")) {
 				static int valueType = 0;
-				ImGui::Combo("Type", &valueType, "Int32\0Float\0\0");
+				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0\0");
 
 				static char valueInput[64] = "1337";
+
 				ImGui::InputText("Value", valueInput, IM_ARRAYSIZE(valueInput));
 
 				if (!value_scanning) {
 					if (ImGui::Button("Scan")) {
 						// parse value
 						std::string valStr = valueInput;
-						DWORD pid = target_pid;
 						std::string proc = procText;
-						if (!pid) { OutputDebugStringA("Failed to find process\n"); }
+						if (!target_pid) { OutputDebugStringA("Failed to find process\n"); }
 						else {
 							if (valueType == 0) {
 								int32_t needle = atoi(valStr.c_str());
 								if (valueScanThread.joinable()) valueScanThread.join();
 
-								valueScanThread = std::thread([pid, needle]() {
+								valueScanThread = std::thread([needle]() {
 
-									valueScan<int32_t>(pid, needle, [](int32_t a, int32_t b) {
+									valueScan<int32_t>(needle, [](int32_t a, int32_t b) {
 										return a == b; 
 										});
 									});
 							}
-							else {
+							else if (valueType == 1) {
 								float needle = (float)atof(valStr.c_str());
 								if (valueScanThread.joinable()) valueScanThread.join();
-								valueScanThread = std::thread([pid, needle]() {
+								valueScanThread = std::thread([needle]() {
 
-									valueScan<float>(pid, needle, [](float a, float b) {return a == b; });
+									valueScan<float>(needle, [](float a, float b) {return a == b; });
 
+									});
+							}
+							else if (valueType == 2) {
+								std::string needleStr = valueInput;
+								if (valueScanThread.joinable()) valueScanThread.join();
+								valueScanThread = std::thread([needleStr]() {
+									stringScan(needleStr);
 									});
 							}
 						}
@@ -110,16 +117,24 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 					if (valueType == 0) {
 						int32_t needle = atoi(valStr.c_str());
 						if (valueScanThread.joinable()) valueScanThread.join();
-						valueScanThread = std::thread([pid, needle]() {
-							valueNarrow<int32_t>(pid, needle, [](int32_t a, int32_t b) {return a == b; });
+						valueScanThread = std::thread([needle]() {
+							valueNarrow<int32_t>(needle, [](int32_t a, int32_t b) {return a == b; });
 							});
 					}
-					else {
+					else if (valueType == 1) {
 						float needle = (float)atof(valStr.c_str());
 						if (valueScanThread.joinable()) valueScanThread.join();
-						valueScanThread = std::thread([pid, needle]() {
-							valueNarrow<float>(pid, needle, [](float a, float b) {return a == b; });
+						valueScanThread = std::thread([needle]() {
+							valueNarrow<float>(needle, [](float a, float b) {return a == b; });
 							});
+					}
+					else if (valueType == 2) {
+						std::string needle = valStr;
+						if (valueScanThread.joinable()) valueScanThread.join();
+						valueScanThread = std::thread([needle]() {
+							stringNarrow(needle);
+							});
+
 					}
 				}
 
@@ -138,10 +153,17 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 							else
 								addrStr += "  =  <invalid>";
 						}
-						else {
+						else if (valueType == 1) {
 							float v;
 							if (readFromTarget<float>(a, v))
 								addrStr += "  =  " + std::to_string(v);
+							else
+								addrStr += "  =  <invalid>";
+						}
+						else if (valueType == 2) {
+							std::string v;
+							if (readStringFromProcess(a, v))
+								addrStr += "  =  " + v;
 							else
 								addrStr += "  =  <invalid>";
 						}

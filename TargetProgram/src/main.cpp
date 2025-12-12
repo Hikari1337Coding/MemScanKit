@@ -42,6 +42,8 @@ int main() {
 	std::cout << "level3 (points->level2): " << (void*)&p3 << std::endl;
 	std::cout << "level4 (points->level3): " << (void*)&p4 << std::endl;
 
+	std::cout << "Press F2 to increse the secretValue by 1" << std::endl;
+
 	// keep the process alive and increase secretValue
 	while (true) {
 		if (GetAsyncKeyState(VK_F2) & 1) {

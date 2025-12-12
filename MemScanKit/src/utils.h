@@ -27,7 +27,7 @@ DWORD getProcIdByName(const std::string& name);
 ModuleInfo getModuleInfoById(DWORD pid);
 
 template<typename T, typename Cmp>
-void valueScan(DWORD pid, const T& needle, Cmp cmp) {
+void valueScan(const T& needle, Cmp cmp) {
 	value_scanning = true;
 	{
 		std::lock_guard<std::mutex> lock(value_matches_mutex);
@@ -86,7 +86,7 @@ bool readValueFromProcess(LPCVOID addr, T& out) {
 
 // Narrowing scan (checks existing addresses only)
 template<typename T, typename Cmp>
-void valueNarrow(DWORD pid, const T& needle, Cmp cmp) {
+void valueNarrow(const T& needle, Cmp cmp) {
 	value_scanning = true;
 	if (!target_handle) { value_scanning = false; return; }
 
@@ -115,3 +115,8 @@ bool readFromTarget(uintptr_t addr, T& out) {
 	SIZE_T numSizeRead = 0;
 	return ReadProcessMemory(target_handle, (LPCVOID)addr, &out, sizeof(T), &numSizeRead) && numSizeRead == sizeof(T);
 }
+
+// for string scanning
+void stringScan(const std::string& needle);
+void stringNarrow(const std::string& needle);
+bool readStringFromProcess(uintptr_t addr, std::string& out, size_t maxLen = 256);
