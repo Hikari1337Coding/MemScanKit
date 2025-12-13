@@ -56,9 +56,11 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 
 			if (ImGui::BeginTabItem("Scan Value")) {
 				static int valueType = 0;
-				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0\0");
+				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0Pointer (Lv1)\0\0");
 
-				static char valueInput[64] = "1337";
+				static int pointerDisplayValueType = 0;
+				
+				static char valueInput[64] = "";
 
 				ImGui::InputText("Value", valueInput, IM_ARRAYSIZE(valueInput));
 
@@ -76,7 +78,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 								valueScanThread = std::thread([needle]() {
 
 									valueScan<int32_t>(needle, [](int32_t a, int32_t b) {
-										return a == b; 
+										return a == b;
 										});
 									});
 							}
@@ -96,82 +98,134 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 									stringScan(needleStr);
 									});
 							}
+							else if (valueType == 3) {
+								uintptr_t needle = (uintptr_t)atof(valStr.c_str());
+								if (valueScanThread.joinable()) valueScanThread.join();
+								valueScanThread = std::thread([needle]() {
+									pointerScanLevel1(needle);
+									});
+							}
 						}
 					}
 				}
 				else {
-					if (ImGui::Button("Stop")) { 
-						value_scanning = false; 
-						if (valueScanThread.joinable()) 
-							valueScanThread.join(); 
+					if (ImGui::Button("Stop")) {
+						value_scanning = false;
+						if (valueScanThread.joinable())
+							valueScanThread.join();
 					}
 				}
 
-				ImGui::SameLine();
-				if (ImGui::Button("Narrow")) {
-					// Narrow current results
-					std::string valStr = valueInput;
-					DWORD pid = target_pid;
-					std::string proc = procText;
+				if (valueType != 3) {
+					ImGui::SameLine();
+					if (ImGui::Button("Narrow")) {
+						// Narrow current results
+						std::string valStr = valueInput;
+						DWORD pid = target_pid;
+						std::string proc = procText;
 
-					if (valueType == 0) {
-						int32_t needle = atoi(valStr.c_str());
-						if (valueScanThread.joinable()) valueScanThread.join();
-						valueScanThread = std::thread([needle]() {
-							valueNarrow<int32_t>(needle, [](int32_t a, int32_t b) {return a == b; });
-							});
-					}
-					else if (valueType == 1) {
-						float needle = (float)atof(valStr.c_str());
-						if (valueScanThread.joinable()) valueScanThread.join();
-						valueScanThread = std::thread([needle]() {
-							valueNarrow<float>(needle, [](float a, float b) {return a == b; });
-							});
-					}
-					else if (valueType == 2) {
-						std::string needle = valStr;
-						if (valueScanThread.joinable()) valueScanThread.join();
-						valueScanThread = std::thread([needle]() {
-							stringNarrow(needle);
-							});
+						if (valueType == 0) {
+							int32_t needle = atoi(valStr.c_str());
+							if (valueScanThread.joinable()) valueScanThread.join();
+							valueScanThread = std::thread([needle]() {
+								valueNarrow<int32_t>(needle, [](int32_t a, int32_t b) {return a == b; });
+								});
+						}
+						else if (valueType == 1) {
+							float needle = (float)atof(valStr.c_str());
+							if (valueScanThread.joinable()) valueScanThread.join();
+							valueScanThread = std::thread([needle]() {
+								valueNarrow<float>(needle, [](float a, float b) {return a == b; });
+								});
+						}
+						else if (valueType == 2) {
+							std::string needle = valStr;
+							if (valueScanThread.joinable()) valueScanThread.join();
+							valueScanThread = std::thread([needle]() {
+								stringNarrow(needle);
+								});
 
+						}
 					}
 				}
 
 				ImGui::Separator();
-				ImGui::Text("Value Matches (count: %d)", (int)value_matches.size());
+				if (valueType == 3) {
+					ImGui::Combo("Pointer Display Type", &pointerDisplayValueType, "Int32\0Float\0String\0\0");
+				}
+				if (valueType != 3) {
+					ImGui::Text("Value Matches (count: %d)", (int)value_matches.size());
+				}
+				else if (valueType == 3) {
+					ImGui::Text("Level-1 pointers found: %d", (int)pointer_results.size());
+				}
 				if (ImGui::BeginChild("ValueMatchesChild", ImVec2(400, 200), true)) {
 					std::lock_guard<std::mutex> lock(value_matches_mutex);
-					for (size_t i = 0; i < value_matches.size(); ++i) {
-						uintptr_t a = value_matches[i];
-						std::string addrStr = addrToHex(a);
+					if (valueType != 3) {
+						for (size_t i = 0; i < value_matches.size(); ++i) {
+							uintptr_t a = value_matches[i];
+							std::string addrStr = addrToHex(a);
 
-						if (valueType == 0) {
-							int32_t v;
-							if (readFromTarget<int32_t>(a, v))
-								addrStr += "  =  " + std::to_string(v);
-							else
-								addrStr += "  =  <invalid>";
-						}
-						else if (valueType == 1) {
-							float v;
-							if (readFromTarget<float>(a, v))
-								addrStr += "  =  " + std::to_string(v);
-							else
-								addrStr += "  =  <invalid>";
-						}
-						else if (valueType == 2) {
-							std::string v;
-							if (readStringFromProcess(a, v))
-								addrStr += "  =  " + v;
-							else
-								addrStr += "  =  <invalid>";
-						}
+							if (valueType == 0) {
+								int32_t v;
+								if (readFromTarget<int32_t>(a, v))
+									addrStr += "  =  " + std::to_string(v);
+								else
+									addrStr += "  =  <invalid>";
+							}
+							else if (valueType == 1) {
+								float v;
+								if (readFromTarget<float>(a, v))
+									addrStr += "  =  " + std::to_string(v);
+								else
+									addrStr += "  =  <invalid>";
+							}
+							else if (valueType == 2) {
+								std::string v;
+								if (readStringFromProcess(a, v))
+									addrStr += "  =  " + v;
+								else
+									addrStr += "  =  <invalid>";
+							}
 
-						if (ImGui::Selectable(addrStr.c_str()))
-							ImGui::SetClipboardText(addrStr.c_str());
+							if (ImGui::Selectable(addrStr.c_str())) {
+								ImGui::SetClipboardText(addrStr.c_str());
+							}
+								
+						}
 					}
-					
+					else if (valueType == 3) {
+						std::lock_guard<std::mutex> lock(pointer_results_mutex);
+						if (pointer_results.empty()) {
+							ImGui::TextDisabled("No pointer results");
+						}
+						else {
+							for (auto& result : pointer_results) {
+								uintptr_t resolved = resolveLevel1(result);
+
+								std::string addrStr =
+									addrToHex(result.base) +
+									" + " + addrToHex(result.offset);
+
+								if (resolved) {
+									addrStr += " => " + addrToHex(resolved);
+
+									std::string valueStr;
+									if (readValueAsString(resolved, (DisplayType)pointerDisplayValueType, valueStr))
+										addrStr += " = " + valueStr;
+									else
+										addrStr += " = <invalid>";
+									
+								}
+								else {
+									addrStr += " => <invalid>";
+								}
+
+								if (ImGui::Selectable(addrStr.c_str()))
+									ImGui::SetClipboardText(addrStr.c_str());
+							}
+						}
+					}
 				}
 				ImGui::EndChild();
 				ImGui::EndTabItem();

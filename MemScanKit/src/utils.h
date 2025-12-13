@@ -120,3 +120,23 @@ bool readFromTarget(uintptr_t addr, T& out) {
 void stringScan(const std::string& needle);
 void stringNarrow(const std::string& needle);
 bool readStringFromProcess(uintptr_t addr, std::string& out, size_t maxLen = 256);
+
+struct PointerResult {
+	uintptr_t base;
+	uintptr_t offset;
+};
+
+void pointerScanLevel1(uintptr_t targetAddr, uintptr_t maxOffset = 0x1000);
+
+inline std::vector<PointerResult> pointer_results;
+inline std::mutex pointer_results_mutex;
+
+uintptr_t resolveLevel1(const PointerResult& r);
+
+enum class DisplayType {
+	Int32,
+	Float,
+	String
+};
+
+bool readValueAsString(uintptr_t addr, DisplayType type, std::string& out);
