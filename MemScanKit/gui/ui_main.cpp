@@ -203,8 +203,8 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 							for (auto& result : pointer_results) {
 								uintptr_t resolved = resolveLevel1(result);
 
-								std::string addrStr =
-									addrToHex(result.base) +
+								std::string addrStr = "*(" +
+									addrToHex(result.base) + ")" +
 									" + " + addrToHex(result.offset);
 
 								if (resolved) {
