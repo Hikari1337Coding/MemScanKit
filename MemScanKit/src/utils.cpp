@@ -1,4 +1,4 @@
-#include "utils.h"
+﻿#include "utils.h"
 #include <TlHelp32.h>
 #include <sstream>
 #include <algorithm>
@@ -134,6 +134,12 @@ bool readStringFromProcess(uintptr_t addr, std::string& out, size_t maxLen) {
 	return true;
 }
 
+// The idea of pointerScanLevel1 function is that it scan through the whole targetProcess and treats every uintptr_t-sized value as a potential pointer.
+// For example, 1. Assume targetAddr = 0x500000, maxOffset = 0x200, and memory contains a value 0x4FFF80; since 0x500000 - 0x4FFF80 = 0x80 (<= 0x200), it’s valid. 
+// 2. If that value is stored at address 0x401020, then the pointer chain is: *(0x401020) + 0x80 = 0x500000. 
+// 3. The function saves { base = 0x401020, offset = 0x80 }, meaning this is a usable level-1 pointer.
+// if there's another address that contains a value 0x4FFF90 and since 0x500000 - 0x4FFF90 = 0x70 (less than 0x200), this is also valid. Both 0x4FFF80 (offset 0x80) and 0x4FFF90 (offset 0x70) will be recorded as separate pointer results.
+// That’s why pointer scans often return many results—you later filter them by stability or deeper levels.
 void pointerScanLevel1(uintptr_t targetAddr, uintptr_t maxOffset)
 {
 	value_scanning = true;
