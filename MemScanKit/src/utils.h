@@ -26,6 +26,7 @@ DWORD getProcIdByName(const std::string& name);
 
 ModuleInfo getModuleInfoById(DWORD pid);
 
+// same as pointer scanning but instead of checking base + offset == targetAddr, check *addr == needle
 template<typename T, typename Cmp>
 void valueScan(const T& needle, Cmp cmp) {
 	value_scanning = true;
