@@ -141,3 +141,6 @@ enum class DisplayType {
 };
 
 bool readValueAsString(uintptr_t addr, DisplayType type, std::string& out);
+
+struct WatchItem { uintptr_t addr; int value; };
+inline std::vector<WatchItem> watchlist;

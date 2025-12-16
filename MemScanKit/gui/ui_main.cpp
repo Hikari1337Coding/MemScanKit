@@ -231,6 +231,28 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				ImGui::EndTabItem();
 			}
 
+			if (ImGui::BeginTabItem("Watchlist")) {
+				static char valueInput[64] = "0x123456";
+				ImGui::InputText("Address (hex)", valueInput, IM_ARRAYSIZE(valueInput));
+				if (ImGui::Button("Add")) {
+					uintptr_t addr = strtoull(valueInput, nullptr, 16);;
+					watchlist.push_back({ addr, 0 });
+
+				}
+				static int valueDisplayType = 0;
+				std::string valueStr{};
+				ImGui::Combo("Value Display Type", &valueDisplayType, "Int32\0Float\0String\0\0");
+				if (ImGui::BeginChild("WatchlistChild", ImVec2(400, 200), true)) {
+					for (const WatchItem& item : watchlist) {
+
+						if (readValueAsString(item.addr, (DisplayType)valueDisplayType, valueStr))
+							ImGui::Text("0x%p = %s", (void*)item.addr, valueStr.c_str());
+					}
+				}	
+				ImGui::EndChild();
+				ImGui::EndTabItem();
+			}
+
 			ImGui::EndTabBar();
 		}
 
