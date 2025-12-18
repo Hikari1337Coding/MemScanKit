@@ -162,37 +162,43 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				if (ImGui::BeginChild("ValueMatchesChild", ImVec2(400, 200), true)) {
 					std::lock_guard<std::mutex> lock(value_matches_mutex);
 					if (valueType != 3) {
-						for (size_t i = 0; i < value_matches.size(); ++i) {
-							uintptr_t a = value_matches[i];
-							std::string addrStr = addrToHex(a);
+						ImGui::BeginTable("ValueTable", 2,
+							ImGuiTableFlags_RowBg |
+							ImGuiTableFlags_Borders |
+							ImGuiTableFlags_Resizable);
 
-							if (valueType == 0) {
-								int32_t v;
-								if (readFromTarget<int32_t>(a, v))
-									addrStr += "  =  " + std::to_string(v);
-								else
-									addrStr += "  =  <invalid>";
-							}
-							else if (valueType == 1) {
-								float v;
-								if (readFromTarget<float>(a, v))
-									addrStr += "  =  " + std::to_string(v);
-								else
-									addrStr += "  =  <invalid>";
-							}
-							else if (valueType == 2) {
-								std::string v;
-								if (readStringFromProcess(a, v))
-									addrStr += "  =  " + v;
-								else
-									addrStr += "  =  <invalid>";
+						ImGui::TableSetupColumn("Address");
+						ImGui::TableSetupColumn("Value");
+						ImGui::TableHeadersRow();
+
+						for (size_t i = 0; i < value_matches.size(); i++) {
+							ImGui::PushID((int)i);
+
+							std::string addrStr = addrToHex(value_matches[i]);
+
+							ImGui::TableNextRow();
+
+							ImGui::TableSetColumnIndex(0);
+							ImGui::Selectable(addrStr.c_str());
+							if (ImGui::BeginPopupContextItem()) {
+								if (ImGui::Selectable("Copy address")) ImGui::SetClipboardText(addrStr.c_str());
+								ImGui::EndPopup();
 							}
 
-							if (ImGui::Selectable(addrStr.c_str())) {
-								ImGui::SetClipboardText(addrStr.c_str());
+							std::string valueStr{};
+							readValueAsString(value_matches[i], (DisplayType)valueType, valueStr);
+
+							ImGui::TableSetColumnIndex(1);
+							ImGui::Selectable(valueStr.c_str());
+							if (ImGui::BeginPopupContextItem()) {
+								if (ImGui::Selectable("Copy value")) ImGui::SetClipboardText(valueStr.c_str());
+								ImGui::EndPopup();
 							}
-								
+							ImGui::PopID();
 						}
+
+						ImGui::EndTable();
+
 					}
 					else if (valueType == 3) {
 						std::lock_guard<std::mutex> lock(pointer_results_mutex);
