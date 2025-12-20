@@ -248,15 +248,34 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				static int valueDisplayType = 0;
 				ImGui::Combo("Value Display Type", &valueDisplayType, "Int32\0Float\0String\0\0");
 				if (ImGui::BeginChild("WatchlistChild", ImVec2(400, 200), true)) {
-					for (WatchItem& item : watchlist) {
-						std::string newValue;
-						if (readValueAsString(item.addr, (DisplayType)valueDisplayType, newValue)) {
-							item.lastValue = item.value;
-							item.value = newValue;
-							bool changed = (item.value != item.lastValue);
-							ImGui::Text("0x%p = %s%s", (void*)item.addr, item.value.c_str(), changed ? " *" : "");
+
+					if (ImGui::BeginTable("WatchlistTable", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+						ImGui::TableSetupColumn("Address");
+						ImGui::TableSetupColumn("Value");
+						ImGui::TableHeadersRow();
+
+						for (size_t i = 0; i < watchlist.size(); i++) {
+							ImGui::PushID((int)i);
+
+							auto& item = watchlist[i];
+							std::string newValue;
+							if (readValueAsString(item.addr, (DisplayType)valueDisplayType, newValue)) {
+								item.lastValue = item.value;
+								item.value = newValue;
+								bool changed = (item.value != item.lastValue);
+
+								ImGui::TableNextRow();
+
+								ImGui::TableSetColumnIndex(0);
+								ImGui::Text("0x%p", (void*)item.addr);
+
+								ImGui::TableSetColumnIndex(1);
+								ImGui::Text("%s%s", item.value.c_str(), changed ? " *" : "");
+							}
+
+							ImGui::PopID();
 						}
-							
+						ImGui::EndTable();
 					}
 				}	
 				ImGui::EndChild();
