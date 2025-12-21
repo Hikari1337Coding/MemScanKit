@@ -5,6 +5,7 @@
 #include <atomic>
 
 int secretValue = 1337;
+int secretValue2 = 30;
 const char patternData[] = "HELLO_PATTERN_TSET_V1";
 
 struct TestStruct {
@@ -18,6 +19,7 @@ TestStruct globalStruct = { 42, "TargetStruct", 3.14159 };
 int main() {
 	std::cout << "Target Program running PID: " << GetCurrentProcessId() << std::endl;
 	std::cout << "secretValue address: " << &secretValue << " value: " << secretValue << std::endl;
+	std::cout << "secretValue2 address: " << &secretValue2 << " value: " << secretValue2 << std::endl;
 	std::cout << "patternData address: " << static_cast<const void*>(patternData) << " data: " << patternData << std::endl;
 	std::cout << "globalStruct address: " << &globalStruct << " id: " << globalStruct.id << " name: " << globalStruct.name << " value: " << globalStruct.value << std::endl;
 
@@ -43,12 +45,17 @@ int main() {
 	std::cout << "level4 (points->level3): " << (void*)&p4 << std::endl;
 
 	std::cout << "Press F2 to increse the secretValue by 1" << std::endl;
+	std::cout << "Press F3 to increse the secretValue2xxx by 1" << std::endl;
 
 	// keep the process alive and increase secretValue
 	while (true) {
 		if (GetAsyncKeyState(VK_F2) & 1) {
 			secretValue += 1;
 			std::cout << "secretValue value: " << secretValue << std::endl;
+		}
+		if (GetAsyncKeyState(VK_F3) & 1) {
+			secretValue2 += 1;
+			std::cout << "secretValue2 value: " << secretValue2 << std::endl;
 		}
 		std::this_thread::sleep_for(std::chrono::microseconds(500));
 	}
