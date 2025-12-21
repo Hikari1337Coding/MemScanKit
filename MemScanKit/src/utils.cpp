@@ -218,3 +218,21 @@ bool readValueAsString(uintptr_t addr, DisplayType type, std::string& out) {
 	}
 	return false;
 }
+
+bool writeValueFromString(uintptr_t addr, DisplayType type, std::string value) {
+	if (!addr) return false;
+
+	switch (type) {
+	case DisplayType::Int32: {
+		int32_t v = std::stoi(value);
+		if (!writeMemory<int32_t>(addr, v)) return false;
+		return true;
+	}
+	case DisplayType::Float: {
+		float v = std::stof(value);
+		if (!writeMemory<float>(addr, v)) return false;
+		return true;
+	}
+	}
+	return false;
+}

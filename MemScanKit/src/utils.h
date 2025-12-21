@@ -146,5 +146,22 @@ struct WatchItem {
 	uintptr_t addr; 
 	std::string value;
 	std::string lastValue;
+	bool freeze{ false };
+	std::string frozenValue;
 };
 inline std::vector<WatchItem> watchlist;
+
+
+template <typename T>
+bool writeMemory(uintptr_t addr, const T& value) {
+	std::lock_guard<std::mutex> lock(target_mutex);
+	if (!target_handle) return false;
+	size_t bytesWritten = 0;
+	return WriteProcessMemory(target_handle, (LPVOID)addr, &value, sizeof(T), &bytesWritten) && bytesWritten == sizeof(T);
+}
+
+bool writeValueFromString(uintptr_t addr, DisplayType type, std::string value);
+
+inline std::atomic<bool> freeze_running{ true };
+inline int watchlistDisplayType = 0;
+inline std::mutex watchlist_mutex;

@@ -59,7 +59,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0Pointer (Lv1)\0\0");
 
 				static int pointerDisplayValueType = 0;
-				
+
 				static char valueInput[64] = "";
 
 				ImGui::InputText("Value", valueInput, IM_ARRAYSIZE(valueInput));
@@ -221,7 +221,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 										addrStr += " = " + valueStr;
 									else
 										addrStr += " = <invalid>";
-									
+
 								}
 								else {
 									addrStr += " => <invalid>";
@@ -242,42 +242,70 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				ImGui::InputText("Address (hex)", valueInput, IM_ARRAYSIZE(valueInput));
 				if (ImGui::Button("Add")) {
 					uintptr_t addr = strtoull(valueInput, nullptr, 16);
-					watchlist.push_back({ addr, "", ""});
+					watchlist.push_back({ addr, "", "" });
 
 				}
-				static int valueDisplayType = 0;
-				ImGui::Combo("Value Display Type", &valueDisplayType, "Int32\0Float\0String\0\0");
+
+				ImGui::Combo("Value Display Type", &watchlistDisplayType, "Int32\0Float\0String\0\0");
 				if (ImGui::BeginChild("WatchlistChild", ImVec2(400, 200), true)) {
 
-					if (ImGui::BeginTable("WatchlistTable", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+					if (ImGui::BeginTable("WatchlistTable", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
 						ImGui::TableSetupColumn("Address");
 						ImGui::TableSetupColumn("Value");
+						ImGui::TableSetupColumn("Freeze");
 						ImGui::TableHeadersRow();
-
+						
 						for (size_t i = 0; i < watchlist.size(); i++) {
 							ImGui::PushID((int)i);
 
 							auto& item = watchlist[i];
 							std::string newValue;
-							if (readValueAsString(item.addr, (DisplayType)valueDisplayType, newValue)) {
-								item.lastValue = item.value;
-								item.value = newValue;
-								bool changed = (item.value != item.lastValue);
 
-								ImGui::TableNextRow();
+							if (item.freeze == false) {
+								if (readValueAsString(item.addr, (DisplayType)watchlistDisplayType, newValue)) {
+									item.lastValue = item.value;
+									item.value = newValue;
+									bool changed = (item.value != item.lastValue);
 
-								ImGui::TableSetColumnIndex(0);
-								ImGui::Text("0x%p", (void*)item.addr);
+									ImGui::TableNextRow();
 
-								ImGui::TableSetColumnIndex(1);
-								ImGui::Text("%s%s", item.value.c_str(), changed ? " *" : "");
+									ImGui::TableSetColumnIndex(0);
+									ImGui::Text("0x%p", (void*)item.addr);
+
+									ImGui::TableSetColumnIndex(1);
+									ImGui::Text("%s%s", item.value.c_str(), changed ? " *" : "");
+
+									ImGui::TableSetColumnIndex(2);
+									bool prevFreeze = item.freeze;
+									ImGui::Checkbox("##freeze", &item.freeze);
+									if (prevFreeze != item.freeze) {
+										item.frozenValue = item.value;
+									}
+
+								}
+							}
+							else {
+								if (readValueAsString(item.addr, (DisplayType)watchlistDisplayType, newValue)) {
+									item.lastValue = item.value;
+									item.value = newValue;
+									ImGui::TableNextRow();
+
+									ImGui::TableSetColumnIndex(0);
+									ImGui::Text("0x%p", (void*)item.addr);
+
+									ImGui::TableSetColumnIndex(1);
+									ImGui::Text("%s", item.value.c_str());
+
+									ImGui::TableSetColumnIndex(2);
+									ImGui::Checkbox("##freeze", &item.freeze);
+								}
 							}
 
 							ImGui::PopID();
 						}
 						ImGui::EndTable();
 					}
-				}	
+				}
 				ImGui::EndChild();
 				ImGui::EndTabItem();
 			}
@@ -301,6 +329,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 	}
 
 	// Shutdown and cleanup
+	freeze_running = false;
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
