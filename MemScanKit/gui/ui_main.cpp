@@ -320,7 +320,17 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				ImGui::BeginChild("##memview", ImVec2(400, 200), true, ImGuiWindowFlags_HorizontalScrollbar);
 
 				for (int row = 0; row < 0x100; row += 16) {
+					ImGui::PushID(row);
 					ImGui::Text("%08llX  ", (unsigned long long)(memViewAddr + row));
+					if (ImGui::BeginPopupContextItem("addr_popup")) {
+						if (ImGui::MenuItem("Copy address")) {
+							char buf[32];
+							sprintf_s(buf, "%llX", (unsigned long long)(memViewAddr + row));
+							ImGui::SetClipboardText(buf);
+						}
+						ImGui::EndPopup();
+					}
+					ImGui::PopID();
 					ImGui::SameLine();
 
 					// hex
