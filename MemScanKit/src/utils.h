@@ -165,3 +165,6 @@ bool writeValueFromString(uintptr_t addr, DisplayType type, std::string value);
 inline std::atomic<bool> freeze_running{ true };
 inline int watchlistDisplayType = 0;
 inline std::mutex watchlist_mutex;
+
+inline uintptr_t memViewAddr{};
+inline uint8_t memBuffer[0x100]; // 256 bytes

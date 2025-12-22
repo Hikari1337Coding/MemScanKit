@@ -310,6 +310,46 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				ImGui::EndTabItem();
 			}
 
+			if (ImGui::BeginTabItem("Memory View")) {
+				ImGui::InputScalar("Address", ImGuiDataType_U64, &memViewAddr, nullptr, nullptr, "%llX");
+
+				if (memViewAddr) {
+					readFromTarget(memViewAddr, memBuffer);
+				}
+
+				ImGui::BeginChild("##memview", ImVec2(400, 200), true, ImGuiWindowFlags_HorizontalScrollbar);
+
+				for (int row = 0; row < 0x100; row += 16) {
+					ImGui::Text("%08llX  ", (unsigned long long)(memViewAddr + row));
+					ImGui::SameLine();
+
+					// hex
+					for (int i = 0; i < 16; i++) {
+						ImGui::Text("%02X ", memBuffer[row + i]);
+						ImGui::SameLine();
+					}
+
+					ImGui::Text("|");
+					ImGui::SameLine();
+
+					// ascii
+					char ascii[2];
+					ascii[1] = 0;
+
+					for (int i = 0; i < 16; i++) {
+						char c = memBuffer[row + i];
+						ascii[0] = (c >= 32 && c <= 126) ? c : '.';
+						ImGui::TextUnformatted(ascii);
+						ImGui::SameLine();
+					}
+					ImGui::NewLine();
+				}
+
+				ImGui::EndChild();
+
+				ImGui::EndTabItem();
+			}
+
 			ImGui::EndTabBar();
 		}
 
