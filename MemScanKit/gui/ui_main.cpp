@@ -254,7 +254,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 						ImGui::TableSetupColumn("Value");
 						ImGui::TableSetupColumn("Freeze");
 						ImGui::TableHeadersRow();
-						
+
 						for (size_t i = 0; i < watchlist.size(); i++) {
 							ImGui::PushID((int)i);
 
@@ -273,7 +273,42 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 									ImGui::Text("0x%p", (void*)item.addr);
 
 									ImGui::TableSetColumnIndex(1);
-									ImGui::Text("%s%s", item.value.c_str(), changed ? " *" : "");
+
+									ImGui::SameLine();
+									if (ImGui::Selectable((item.value + (changed ? " *" : "")).c_str())) {
+										item.editing = true;
+									}
+									
+
+									if (item.editBuf[0] == 0) {
+										strncpy_s(item.editBuf, item.value.c_str(), sizeof(item.editBuf));
+									}
+
+									if (item.editing) {
+										if (ImGui::InputText("##val", item.editBuf, IM_ARRAYSIZE(item.editBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+
+											// write on enter
+											switch ((DisplayType)watchlistDisplayType) {
+											case DisplayType::Int32: {
+												int v = atoi(item.editBuf);
+												writeMemory(item.addr, v);
+												break;
+											}
+											case DisplayType::Float: {
+												float v = (float)atof(item.editBuf);
+												writeMemory(item.addr, v);
+												break;
+											}
+											case DisplayType::String: {
+												WriteProcessMemory(target_handle, (LPVOID)item.addr, item.editBuf, strlen(item.editBuf) + 1, nullptr);
+												break;
+											}
+											}
+											item.editing = false;
+											item.editBuf[0] = 0; // force refresh from memory
+										}
+									}
+
 
 									ImGui::TableSetColumnIndex(2);
 									bool prevFreeze = item.freeze;

@@ -148,6 +148,9 @@ struct WatchItem {
 	std::string lastValue;
 	bool freeze{ false };
 	std::string frozenValue;
+
+	char editBuf[64]{};
+	bool editing{ false };
 };
 inline std::vector<WatchItem> watchlist;
 
