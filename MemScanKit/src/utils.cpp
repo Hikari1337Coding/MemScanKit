@@ -236,3 +236,53 @@ bool writeValueFromString(uintptr_t addr, DisplayType type, std::string value) {
 	}
 	return false;
 }
+
+Pattern ParsePattern(const char* pattern) {
+	Pattern p{};
+
+	while (*pattern) {
+		if (*pattern == ' ') {
+			pattern++;
+			continue;
+		}
+
+		if (*pattern == '?') {
+			p.bytes.push_back(0);
+			p.mask.push_back(false);
+			pattern += (*(pattern + 1) == '?') ? 2 : 1;
+		}
+		else {
+			p.bytes.push_back((uint8_t)strtoul(pattern, nullptr, 16));
+			p.mask.push_back(true);
+			pattern += 2;
+		}
+	}
+
+	return p;
+}
+
+uintptr_t FindPattern(uint8_t* data, size_t size, const Pattern& pat) {
+	for (size_t i = 0; i <= size - pat.bytes.size(); i++) {
+		bool found = true;
+		for (size_t j = 0; j < pat.bytes.size(); j++) {
+			if (pat.mask[j] && data[i + j] != pat.bytes[j]) {
+				found = false;
+				break;
+			}
+		}
+
+		if (found)
+			return i;
+	}
+	return 0;
+}
+
+uintptr_t ScanModule(HANDLE hProc, uintptr_t base, size_t size, const char* sig) {
+	std::vector<uint8_t> buffer(size);
+	ReadProcessMemory(hProc, (LPCVOID)base, buffer.data(), size, nullptr);
+
+	Pattern pat = ParsePattern(sig);
+	uintptr_t offset = FindPattern(buffer.data(), size, pat);
+
+	return offset ? base + offset : 0;
+}

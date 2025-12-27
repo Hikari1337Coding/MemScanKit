@@ -56,13 +56,30 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 
 			if (ImGui::BeginTabItem("Scan Value")) {
 				static int valueType = 0;
-				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0Pointer (Lv1)\0\0");
+				ImGui::Combo("Type", &valueType, "Int32\0Float\0String\0Pointer (Lv1)\0Pattern\0\0");
 
 				static int pointerDisplayValueType = 0;
 
 				static char valueInput[64] = "";
 
 				ImGui::InputText("Value", valueInput, IM_ARRAYSIZE(valueInput));
+				if (valueType == 0) {
+					ImGui::Text("Example: 1337");
+				}
+				else if (valueType == 1) {
+					ImGui::Text("Example: 3.14");
+				}
+				else if (valueType == 2) {
+					ImGui::Text("Example: HELLO_PATTERN_TSET_V1");
+				}
+				else if (valueType == 3) {
+					ImGui::Text("Example: 0x7FF6D16650A0");
+				}
+				else if (valueType == 4) {
+					ImGui::Text("Example: 48 8B ?? 00");
+				}
+
+				static uintptr_t patternScanResult{};
 
 				if (!value_scanning) {
 					if (ImGui::Button("Scan")) {
@@ -105,6 +122,12 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 									pointerScanLevel1(needle);
 									});
 							}
+							else if (valueType == 4) {
+								if (valueScanThread.joinable()) valueScanThread.join();
+								valueScanThread = std::thread([]() {
+									patternScanResult = ScanModule(target_handle, target_module_info.base, target_module_info.size, valueInput);
+									});
+							}
 						}
 					}
 				}
@@ -116,7 +139,7 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 					}
 				}
 
-				if (valueType != 3) {
+				if (valueType != 3 && valueType != 4) {
 					ImGui::SameLine();
 					if (ImGui::Button("Narrow")) {
 						// Narrow current results
@@ -153,15 +176,18 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 				if (valueType == 3) {
 					ImGui::Combo("Pointer Display Type", &pointerDisplayValueType, "Int32\0Float\0String\0\0");
 				}
-				if (valueType != 3) {
+				if (valueType != 3 && valueType != 4) {
 					ImGui::Text("Value Matches (count: %d)", (int)value_matches.size());
 				}
 				else if (valueType == 3) {
 					ImGui::Text("Level-1 pointers found: %d", (int)pointer_results.size());
 				}
+				else if (valueType == 4) {
+					ImGui::Text("Pattern Scan results");
+				}
 				if (ImGui::BeginChild("ValueMatchesChild", ImVec2(400, 200), true)) {
 					std::lock_guard<std::mutex> lock(value_matches_mutex);
-					if (valueType != 3) {
+					if (valueType != 3 && valueType != 4) {
 						ImGui::BeginTable("ValueTable", 2,
 							ImGuiTableFlags_RowBg |
 							ImGuiTableFlags_Borders |
@@ -230,6 +256,13 @@ void run_overlay_loop(HWND hwnd, WNDCLASSEXW wc) {
 								if (ImGui::Selectable(addrStr.c_str()))
 									ImGui::SetClipboardText(addrStr.c_str());
 							}
+						}
+					}
+					else if (valueType == 4) {
+						char buf[32];
+						sprintf_s(buf, "0x%llX", (unsigned long long)patternScanResult);
+						if (patternScanResult != 0x0) {
+							ImGui::Selectable(buf);
 						}
 					}
 				}

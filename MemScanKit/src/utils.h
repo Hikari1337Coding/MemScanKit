@@ -171,3 +171,14 @@ inline std::mutex watchlist_mutex;
 
 inline uintptr_t memViewAddr{};
 inline uint8_t memBuffer[0x100]; // 256 bytes
+
+struct Pattern {
+	std::vector<uint8_t> bytes;
+	std::vector<bool> mask; // true = compare, false = wildcard
+};
+
+Pattern ParsePattern(const char* pattern);
+
+uintptr_t FindPattern(uint8_t* data, size_t size, const Pattern& pat);
+
+uintptr_t ScanModule(HANDLE hProc, uintptr_t base, size_t size, const char* sig);
