@@ -1,6 +1,10 @@
 # MemScanKit
 
-MemScanKit is a small, traditional Windows memory scanner written in C++ using Win32, DirectX 11, and Dear ImGui. It demonstrates low‑level process inspection fundamentals: process/module discovery, value scanning, narrowing, and basic level‑1 pointer resolution, all rendered through a lightweight overlay.
+MemScanKit is a small, traditional Windows memory scanner written in C++ using Win32, DirectX 11, and Dear ImGui. It demonstrates low‑level process inspection fundamentals: process/module discovery, value scanning, narrowing, pattern scanning, memory viewer, watchlist, and basic level‑1 pointer resolution, all rendered through a lightweight overlay.
+
+### Example: Value Scan and Narrowing
+
+<img width="517" height="482" alt="image" src="https://github.com/user-attachments/assets/1e687e2e-1235-4c17-8e76-43428378cece" />
 
 ## Features
 
@@ -9,6 +13,9 @@ MemScanKit is a small, traditional Windows memory scanner written in C++ using W
 * Value scanning: Int32, Float, String
 * Narrowing scans on previous results
 * Level‑1 pointer scanning and resolution
+* Simple Pattern Scanning
+* Watchlist and Value freeze
+* Memory view (hex viewer) and inline edit mode
 * Real‑time overlay UI (Win32 + DX11 + ImGui)
 
 ## Tech Stack
@@ -38,3 +45,4 @@ This project is educational and portfolio‑oriented. It focuses on clarity, cor
 ## Disclaimer
 
 For learning and research purposes only. Use responsibly and only on software you own or have permission to analyze.
+
